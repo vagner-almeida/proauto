@@ -1,4 +1,5 @@
-import { Badge } from "../components/UI";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { Badge, Card, ACCENT } from "../components/UI";
 
 export default function Dashboard({ clientes, os, estoque, financeiro }) {
   const receitas     = financeiro.filter(f => f.tipo === "Receita").reduce((a, b) => a + b.valor, 0);
@@ -7,97 +8,107 @@ export default function Dashboard({ clientes, os, estoque, financeiro }) {
   const osAndamento  = os.filter(o => o.status === "Em andamento").length;
   const osConcluidas = os.filter(o => o.status === "Concluída").length;
 
-  const stats = [
-    { icon: "👥", label: "Clientes",       value: clientes.length, accent: "#3b82f6" },
-    { icon: "🔧", label: "Em andamento",   value: osAndamento,     accent: "#eab308" },
-    { icon: "✅", label: "OS concluídas",  value: osConcluidas,    accent: "#10b981" },
-    { icon: "📦", label: "Alerta estoque", value: baixoEstoque,    accent: baixoEstoque > 0 ? "#ef4444" : "#10b981" },
+  // Agrupa financeiro por mês para o gráfico
+  const meses = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+  const dadosGrafico = meses.map((mes, i) => {
+    const rec = financeiro
+      .filter(f => f.tipo === "Receita" && new Date(f.data).getMonth() === i)
+      .reduce((a, b) => a + b.valor, 0);
+    const desp = financeiro
+      .filter(f => f.tipo === "Despesa" && new Date(f.data).getMonth() === i)
+      .reduce((a, b) => a + b.valor, 0);
+    return { mes, Receitas: rec, Despesas: desp };
+  }).filter(d => d.Receitas > 0 || d.Despesas > 0);
+
+  // Se não há dados mensais suficientes, usa dados simulados para demo
+  const chartData = dadosGrafico.length > 0 ? dadosGrafico : [
+    { mes: "Jan", Receitas: 1200, Despesas: 800 },
+    { mes: "Fev", Receitas: 1800, Despesas: 1200 },
+    { mes: "Mar", Receitas: receitas || 1130, Despesas: despesas || 2420 },
   ];
 
   return (
     <div className="flex flex-col gap-6">
-
-      {/* Hero */}
-      <div className="rounded-2xl p-5 relative overflow-hidden"
-        style={{ background: "linear-gradient(135deg,#c8102e,#7a0a1c)", boxShadow: "0 8px 32px rgba(200,16,46,0.3)" }}>
-        <div className="absolute inset-0 opacity-10"
-          style={{ backgroundImage: "repeating-linear-gradient(45deg,transparent,transparent 10px,rgba(255,255,255,0.3) 10px,rgba(255,255,255,0.3) 11px)" }} />
-        <div className="relative">
-          <div className="text-xs font-bold text-red-200 uppercase tracking-widest mb-1">Painel de Controle</div>
-          <div className="text-2xl font-black text-white">Bem-vindo! 👋</div>
-          <div className="text-sm text-red-200 mt-1">Pro Auto — Manutenção Automotiva</div>
-          <div className="mt-4 flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-            <span className="text-xs text-red-100">Sistema operacional</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 gap-3">
-        {stats.map(s => (
-          <div key={s.label} className="rounded-2xl p-4"
-            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
-            <div className="text-xl mb-2">{s.icon}</div>
-            <div className="text-2xl font-black" style={{ color: s.accent }}>{s.value}</div>
-            <div className="text-xs text-gray-500 mt-0.5">{s.label}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Financeiro resumo */}
-      <div className="rounded-2xl p-5"
-        style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
-        <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Resumo Financeiro</div>
+      {/* Métricas */}
+      <div className="grid grid-cols-2 gap-4">
         {[
-          { label: "Receitas", val: `+ R$ ${receitas.toFixed(2)}`, color: "#10b981" },
-          { label: "Despesas", val: `- R$ ${despesas.toFixed(2)}`, color: "#ef4444" },
-        ].map(r => (
-          <div key={r.label} className="flex justify-between mb-3">
-            <span className="text-sm text-gray-400">{r.label}</span>
-            <span className="text-sm font-bold" style={{ color: r.color }}>{r.val}</span>
-          </div>
+          { icon: "👥", label: "Clientes",      value: clientes.length, color: ACCENT,    bg: "#f9fafb" },
+          { icon: "🔧", label: "Em andamento",  value: osAndamento,     color: "#d97706", bg: "#fffbeb" },
+          { icon: "✅", label: "OS concluídas", value: osConcluidas,    color: "#15803d", bg: "#f0fdf4" },
+          { icon: "📦", label: "Estoque baixo", value: baixoEstoque,    color: baixoEstoque > 0 ? "#dc2626" : "#15803d", bg: baixoEstoque > 0 ? "#fef2f2" : "#f0fdf4" },
+        ].map(m => (
+          <Card key={m.label} className="p-4">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl mb-3" style={{ background: m.bg }}>{m.icon}</div>
+            <div className="text-2xl font-black" style={{ color: m.color }}>{m.value}</div>
+            <div className="text-xs text-gray-500 mt-0.5 font-medium">{m.label}</div>
+          </Card>
         ))}
-        <div className="h-px my-3" style={{ background: "rgba(255,255,255,0.07)" }} />
-        <div className="flex justify-between">
-          <span className="text-sm font-semibold text-white">Saldo</span>
-          <span className="text-base font-black" style={{ color: receitas - despesas >= 0 ? "#c8102e" : "#ef4444" }}>
+      </div>
+
+      {/* Gráfico de faturamento */}
+      <Card className="p-5">
+        <h3 className="text-sm font-bold text-gray-700 mb-1">Faturamento Mensal</h3>
+        <p className="text-xs text-gray-400 mb-4">Receitas × Despesas por mês</p>
+        <ResponsiveContainer width="100%" height={220}>
+          <BarChart data={chartData} barSize={18} barGap={4}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+            <XAxis dataKey="mes" tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} tickFormatter={v => `R$${v}`} />
+            <Tooltip
+              formatter={(value) => [`R$ ${value.toFixed(2)}`, undefined]}
+              contentStyle={{ borderRadius: 12, border: "1px solid #e5e7eb", fontSize: 12 }}
+            />
+            <Legend wrapperStyle={{ fontSize: 12 }} />
+            <Bar dataKey="Receitas" fill="#16a34a" radius={[6,6,0,0]} />
+            <Bar dataKey="Despesas" fill="#1a1a1a" radius={[6,6,0,0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </Card>
+
+      {/* Resumo financeiro */}
+      <Card className="p-5">
+        <h3 className="text-sm font-bold text-gray-700 mb-4">Resumo Financeiro</h3>
+        <div className="flex justify-between py-2 border-b border-gray-50">
+          <span className="text-sm text-gray-500">Receitas</span>
+          <span className="text-sm font-bold text-green-600">+ R$ {receitas.toFixed(2)}</span>
+        </div>
+        <div className="flex justify-between py-2 border-b border-gray-50">
+          <span className="text-sm text-gray-500">Despesas</span>
+          <span className="text-sm font-bold text-red-500">− R$ {despesas.toFixed(2)}</span>
+        </div>
+        <div className="flex justify-between pt-3">
+          <span className="text-sm font-bold text-gray-700">Saldo</span>
+          <span className="text-base font-black" style={{ color: receitas - despesas >= 0 ? "#15803d" : "#dc2626" }}>
             R$ {(receitas - despesas).toFixed(2)}
           </span>
         </div>
-      </div>
+      </Card>
 
       {/* Últimas OS */}
-      <div className="rounded-2xl p-5"
-        style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
-        <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Últimas OS</div>
+      <Card className="p-5">
+        <h3 className="text-sm font-bold text-gray-700 mb-4">Últimas OS</h3>
         <div className="flex flex-col gap-3">
           {os.slice(0, 3).map(o => (
-            <div key={o.id} className="flex items-center justify-between py-2 border-b last:border-0"
-              style={{ borderColor: "rgba(255,255,255,0.05)" }}>
+            <div key={o.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
               <div>
-                <div className="text-sm font-semibold text-white">{o.cliente}</div>
-                <div className="text-xs text-gray-500">{o.servico}</div>
+                <p className="text-sm font-semibold text-gray-800">{o.cliente}</p>
+                <p className="text-xs text-gray-400">{o.servico}</p>
               </div>
               <div className="flex items-center gap-3">
                 <Badge status={o.status} />
-                <span className="text-sm font-bold text-white">R$ {o.valor}</span>
+                <span className="text-sm font-bold text-gray-700">R$ {o.valor}</span>
               </div>
             </div>
           ))}
         </div>
-      </div>
+      </Card>
 
-      {/* Alerta estoque */}
       {baixoEstoque > 0 && (
-        <div className="rounded-2xl p-4 flex items-start gap-3"
-          style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)" }}>
+        <div className="rounded-2xl p-4 flex gap-3 items-start bg-red-50 border border-red-100">
           <span className="text-xl">⚠️</span>
           <div>
-            <div className="text-sm font-bold text-rose-400">Estoque crítico</div>
-            <div className="text-xs text-gray-400 mt-0.5">
-              {baixoEstoque} {baixoEstoque === 1 ? "item abaixo" : "itens abaixo"} do mínimo. Verifique o módulo Estoque.
-            </div>
+            <p className="text-sm font-bold text-red-700">Atenção: estoque crítico</p>
+            <p className="text-xs text-red-500 mt-0.5">{baixoEstoque} {baixoEstoque === 1 ? "item abaixo" : "itens abaixo"} do mínimo.</p>
           </div>
         </div>
       )}
